@@ -1,0 +1,19 @@
+[
+  {
+    "id": 0,
+    "languages": {
+      "en": {
+        "text": "book",
+        "audio": "audio/en/0.mp3",
+        "sentence": "I love reading this book",
+        "sentence_audio": "audio/en/0_sentence.mp3"
+      },
+      "ar": {
+        "text": "كتاب",
+        "audio": "audio/ar/0.mp3",
+        "sentence": "أحب قراءة هذا الكتاب",
+        "sentence_audio": "audio/ar/0_sentence.mp3"
+      }
+    }
+  }
+]
