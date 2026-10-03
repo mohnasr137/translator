@@ -1,3 +1,24 @@
+# Environment files
 .env
-node_modules
+.env.local
+
+# Node modules
+node_modules/
 package-lock.json
+
+# Generated audio cache (keep directory structure and samples)
+audio/cache/*.mp3
+!audio/cache/.gitkeep
+
+# System & IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

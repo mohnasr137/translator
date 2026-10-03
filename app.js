@@ -1,62 +1,102 @@
-// modules
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import morgan from "morgan";
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import translateRoutes from "./routes/translateRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
+import historyRoutes from "./routes/historyRoutes.js";
+import { notFound } from "./middlewares/notFound.js";
+import { errorHandler } from "./middlewares/errorHandler.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config();
-
-// imports
-import authRoutes from './routers/authRouters.js';
-import homeRouters from "./routers/homeRouters.js";
-import portfoiloRouters from "./routers/portfoiloRouters.js";
-import userRouters from "./routers/user.js";
 
 const app = express();
-const url = process.env.API_URL;
+const apiUrl = process.env.API_URL || "/api/v1";
 
+// Security headers
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
+// Cross-Origin Resource Sharing
+app.use(cors());
+
+// Request logger
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+} else {
+  app.use(morgan("combined"));
+}
+
+// Rate limiting (100 requests per 15 mins per IP)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: "Too many requests, please try again later.",
+  message: {
+    success: false,
+    message: "Too many requests from this IP, please try again after 15 minutes.",
+  },
 });
-
-if (process.env.NODE_ENV === "development") {
-  app.use(morgan("dev"));
-}
-
-app.use(helmet());
 app.use(limiter);
-app.use(cors());
+
+// Body parsers
 app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-app.use(
-  `${url}/uploads`,
-  express.static(path.join(__dirname, "images", "uploads"))
-);
-app.use(
-  `${url}/portfolio`,
-  express.static(path.join(__dirname, "images", "portfolio"))
-);
+// Static audio files (cached TTS and sample audio)
+const audioPath = path.resolve(__dirname, "audio");
+app.use("/audio", express.static(audioPath));
 
-// routes
-app.use(`${url}/auth`, authRoutes);
-app.use(`${url}/home`, homeRouters);
-app.use(`${url}/portfoilo`, portfoiloRouters);
-app.use(`${url}/user`, userRouters);
-
-app.use(`/:error`, (req, res) => {
-  const { error } = req.params;
-  res.status(404).json({ error: `Error: you write ${error} and there is no api like this` });
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "TranslateApp API",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
 });
 
-app.use("/", (req, res) => {
-  res.status(200).json({ message: "Welcome to the Ecommerce API" });
+// API Welcome / Root info
+app.get("/", (req, res) => {
+  res.status(200).json({
+    name: "TranslateApp API",
+    version: "1.0.0",
+    description: "Multilingual translation, dictionary lookup, text-to-speech synthesis, and history management API.",
+    documentation: {
+      health: "/health",
+      apiBase: apiUrl,
+      endpoints: {
+        translate: `${apiUrl}/translate`,
+        translateWord: `${apiUrl}/translate/word`,
+        batchTranslate: `${apiUrl}/translate/batch`,
+        detectLanguage: `${apiUrl}/translate/detect`,
+        supportedLanguages: `${apiUrl}/translate/languages`,
+        tts: `${apiUrl}/translate/tts?text=hello&lang=en`,
+        samples: `${apiUrl}/translate/samples`,
+        auth: `${apiUrl}/auth`,
+        history: `${apiUrl}/history`,
+      },
+    },
+  });
 });
+
+// Mount modular API routes
+app.use(`${apiUrl}/translate`, translateRoutes);
+app.use(`${apiUrl}/auth`, authRoutes);
+app.use(`${apiUrl}/history`, historyRoutes);
+
+// 404 Handler
+app.use(notFound);
+
+// Centralized Error Handler
+app.use(errorHandler);
 
 export default app;

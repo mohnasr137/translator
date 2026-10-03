@@ -1,37 +1,45 @@
-// imports
 import app from "./app.js";
 import connectDB from "./config/db.js";
-// import createAdminUser from './utils/adminSeeder.js';
 import checkEnv from "./config/env.js";
+import createAdminUser from "./utils/adminSeeder.js";
 
-// Configs
+// Initialize and validate environment configuration
 checkEnv();
-await connectDB();
-// await createAdminUser();
 
-// Server
-const PORT = process.env.PORT || 3000;
+// Attempt database connection
+await connectDB();
+
+// Attempt admin seeding (if DB is available and admin credentials are set)
+await createAdminUser();
+
+// Start HTTP Server
+const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(
+    `[Server] TranslateApp running in ${process.env.NODE_ENV || "development"} mode on port ${PORT}`
+  );
+  console.log(`[Server] Health check available at http://localhost:${PORT}/health`);
+  console.log(`[Server] API endpoints available at http://localhost:${PORT}${process.env.API_URL || "/api/v1"}`);
 });
 
-// Rejections
+// Process signal & rejection handling
 process.on("unhandledRejection", (err) => {
-  console.error(`unhandledRejection: ${err.message}`);
+  console.error(`[Process] Unhandled Rejection: ${err.message}`);
   server.close(() => process.exit(1));
 });
 
 process.on("uncaughtException", (err) => {
-  console.error(`uncaughtException: ${err.message}`);
+  console.error(`[Process] Uncaught Exception: ${err.message}`);
   server.close(() => process.exit(1));
 });
 
-process.on("SIGINT", () => {
-  console.log("Server is shutting down...");
-  server.close(() => process.exit(0));
-});
+const handleShutdown = (signal) => {
+  console.log(`\n[Process] ${signal} received. Gracefully shutting down...`);
+  server.close(() => {
+    console.log("[Process] HTTP server closed.");
+    process.exit(0);
+  });
+};
 
-process.on("SIGTERM", () => {
-  console.log("Server is shutting down...");
-  server.close(() => process.exit(0));
-});
+process.on("SIGINT", () => handleShutdown("SIGINT"));
+process.on("SIGTERM", () => handleShutdown("SIGTERM"));

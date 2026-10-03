@@ -1,106 +1,79 @@
 import mongoose from "mongoose";
 import bcryptjs from "bcryptjs";
 
-const userSchema = mongoose.Schema(
+const userSchema = new mongoose.Schema(
   {
     name: {
+      type: String,
       required: [true, "Please add a name"],
-      maxlength: [20, "Username cannot be more than 20 characters"],
-      minlength: [3, "Username cannot be less than 3 characters"],
-      match: [/^[A-Za-z0-9]*$/, "Please add a valid name"],
-
-      type: String,
-      trim: true,
-    },
-    phone: {
-      required: [true, "Please add a phone"],
-      maxlength: [20, "Phone cannot be more than 20 characters"],
-      minlength: [3, "Phone cannot be less than 3 characters"],
-      match: [/^[0-9]*$/, "Please add a valid phone"],
-      type: String,
+      maxlength: [50, "Name cannot be more than 50 characters"],
+      minlength: [2, "Name cannot be less than 2 characters"],
       trim: true,
     },
     email: {
-      required: [true, "Please add a email"],
-      maxlength: [50, "Email cannot be more than 50 characters"],
-      minlength: [3, "Email cannot be less than 3 characters"],
-      match: [
-        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-        "Please add a valid email",
-      ],
       type: String,
+      required: [true, "Please add an email address"],
+      maxlength: [100, "Email cannot be more than 100 characters"],
+      match: [
+        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+        "Please add a valid email address",
+      ],
       unique: true,
+      lowercase: true,
       trim: true,
     },
     password: {
-      required: [true, "Please add a password"],
-      maxlength: [250, "Password cannot be more than 250 characters"],
-      minlength: [8, "Password cannot be less than 8 characters"],
-      match: [
-        /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$/,
-        "Please add a valid password",
-      ],
       type: String,
+      required: [true, "Please add a password"],
+      minlength: [6, "Password must be at least 6 characters"],
       select: false,
     },
-    address: {
+    phone: {
       type: String,
-      default: "not added",
+      trim: true,
+      default: "",
     },
     role: {
       type: String,
       enum: ["user", "admin"],
       default: "user",
     },
-    verify: {
+    isVerified: {
       type: Boolean,
       default: false,
     },
-    resetPass: {
+    verificationCode: {
+      type: String,
+      trim: true,
+    },
+    resetPasswordCode: {
+      type: String,
+      trim: true,
+    },
+    resetPasswordAllowed: {
       type: Boolean,
       default: false,
     },
-    image: {
-      require: true,
+    avatar: {
       type: String,
-      trim: true,
+      default: "default-avatar.png",
     },
-    code: {
-      type: String,
-      trim: true,
-    },
-    myProduct: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
-    cart: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
-    favorite: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
   },
   {
     timestamps: true,
   }
 );
 
+// Hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   const salt = await bcryptjs.genSalt(10);
   this.password = await bcryptjs.hash(this.password, salt);
 });
 
-userSchema.methods.comparePassword = async function (password) {
-  return await bcryptjs.compare(password, this.password);
+// Compare password method
+userSchema.methods.comparePassword = async function (enteredPassword) {
+  return await bcryptjs.compare(enteredPassword, this.password);
 };
 
 const User = mongoose.model("User", userSchema);

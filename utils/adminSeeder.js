@@ -1,24 +1,37 @@
-import User from '../models/user.js';
+import mongoose from "mongoose";
+import User from "../models/user.js";
 
+/**
+ * Seed initial admin user if configured and database is connected.
+ */
 const createAdminUser = async () => {
-  try {
-    const adminExists = await User.findOne({ username: process.env.ADMIN_USERNAME });
-    
-    if (!adminExists) {
-      const admin = new User({
-        username: process.env.ADMIN_USERNAME,
-        email: process.env.ADMIN_EMAIL,
-        password: process.env.ADMIN_PASSWORD,
-        role: 'admin'
-      });
+  if (mongoose.connection.readyState !== 1) {
+    return;
+  }
 
-      await admin.save();
-      console.log('Admin user created successfully');
-    } else {
-      console.log('Admin user already exists');
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const adminName = process.env.ADMIN_USERNAME || "Administrator";
+
+  if (!adminEmail || !adminPassword) {
+    return;
+  }
+
+  try {
+    const adminExists = await User.findOne({ email: adminEmail.toLowerCase() });
+
+    if (!adminExists) {
+      await User.create({
+        name: adminName,
+        email: adminEmail.toLowerCase(),
+        password: adminPassword,
+        role: "admin",
+        isVerified: true,
+      });
+      console.log(`[Admin Seeder] Admin user created (${adminEmail})`);
     }
   } catch (err) {
-    console.error('Error creating admin user:', err.message);
+    console.error("[Admin Seeder] Error seeding admin user:", err.message);
   }
 };
 
